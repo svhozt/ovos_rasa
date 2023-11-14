@@ -81,7 +81,7 @@ services:
       XDG_RUNTIME_DIR: $XDG_RUNTIME_DIR
     network_mode: host
       devices:
-      - /dev/snd
+        - /dev/snd
     volumes:
       - ~/.config/pulse/cookie:/home/${OVOS_USER}/.config/pulse/cookie:ro
       - ${OVOS_CONFIG_FOLDER}:/home/${OVOS_USER}/.config/mycroft
