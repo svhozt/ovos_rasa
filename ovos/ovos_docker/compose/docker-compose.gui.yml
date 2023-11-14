@@ -1,0 +1,157 @@
+---
+version: "3.9"
+
+x-podman: &podman
+  userns_mode: keep-id
+  security_opt:
+    - "label=disable"
+
+x-logging: &default-logging
+  driver: json-file
+  options:
+    mode: non-blocking
+    max-buffer-size: 4m
+    max-size: "200m"
+    max-file: "1"
+
+volumes:
+  ovos_gui_files:
+    name: ovos_gui_files
+    driver: local
+
+services:
+  ovos_gui_websocket:
+    <<: *podman
+    container_name: ovos_gui_websocket
+    hostname: ovos_gui_websocket
+    restart: unless-stopped
+    image: docker.io/smartgic/ovos-gui-websocket:${VERSION}
+    logging: *default-logging
+    pull_policy: $PULL_POLICY
+    environment:
+      TZ: $TZ
+    network_mode: host
+    volumes:
+      - ${OVOS_CONFIG_FOLDER}:/home/${OVOS_USER}/.config/mycroft:ro
+      - ovos_gui_files:/home/${OVOS_USER}/.cache/ovos_gui_file_server
+      - ${TMP_FOLDER}:/tmp/mycroft
+    depends_on:
+      ovos_messagebus:
+        condition: service_started
+
+  ovos_gui:
+    <<: *podman
+    container_name: ovos_gui
+    hostname: ovos_gui
+    restart: unless-stopped
+    image: docker.io/smartgic/ovos-gui-shell:${VERSION}
+    logging: *default-logging
+    pull_policy: $PULL_POLICY
+    environment:
+      DBUS_SESSION_BUS_ADDRESS: unix:path=${XDG_RUNTIME_DIR}/bus
+      DISPLAY: :0
+      PULSE_SERVER: unix:${XDG_RUNTIME_DIR}/pulse/native
+      PULSE_COOKIE: /home/${OVOS_USER}/.config/pulse/cookie
+      QML2_IMPORT_PATH: /usr/lib/qml
+      QT_QPA_PLATFORM: eglfs
+      QT_QPA_EGLFS_KMS_ATOMIC: 1
+      QT_QPA_PLATFORMTHEME: qt5ct
+      QT_PLUGIN_PATH: /usr/lib/qt/plugins:/usr/lib/plugins:/usr/lib/plugins/kf5
+      QT_LOGGING_RULES: "*=false"
+      QT_FILE_SELECTORS: ovos
+      QT_FONT_DPI: 120
+      QT_IM_MODULE: qtvirtualkeyboard
+      QT_QUICK_CONTROLS_STYLE: OpenVoiceStyle
+      TZ: $TZ
+      XDG_CURRENT_DESKTOP: kde
+      XDG_RUNTIME_DIR: $XDG_RUNTIME_DIR
+    network_mode: host
+    devices:
+      - /dev/dri
+        #      - /dev/snd
+    volumes:
+      - ~/.config/pulse/cookie:/home/${OVOS_USER}/.config/pulse/cookie:ro
+      - ${OVOS_CONFIG_FOLDER}:/home/${OVOS_USER}/.config/mycroft:ro
+      - ${TMP_FOLDER}:/tmp/mycroft
+      - ${XDG_RUNTIME_DIR}:${XDG_RUNTIME_DIR}:ro
+      - ${XDG_RUNTIME_DIR}/bus:${XDG_RUNTIME_DIR}/bus:ro
+      - ${XDG_RUNTIME_DIR}/pipewire-0:${XDG_RUNTIME_DIR}/pipewire-0:ro
+      - ${XDG_RUNTIME_DIR}/pulse:${XDG_RUNTIME_DIR}/pulse:ro
+      - ${OVOS_SHARE_FOLDER}:/home/${OVOS_USER}/.local/share/mycroft
+      - ovos_gui_files:/home/${OVOS_USER}/.cache/gui_files
+    depends_on:
+      ovos_messagebus:
+        condition: service_started
+      ovos_gui_websocket:
+        condition: service_started
+      ovos_phal:
+        condition: service_started
+
+  ########################
+  # Uncomment this service if you want to use the origial GUI
+  # without the Open Voice OS Shell layer
+  ########################
+  # ovos_gui:
+  #   <<: *podman
+  #   container_name: ovos_gui
+  #   hostname: ovos_gui
+  #   restart: unless-stopped
+  #   image: docker.io/smartgic/ovos-gui-original:${VERSION}
+  #   logging: *default-logging
+  #   pull_policy: $PULL_POLICY
+  #   environment:
+  #     DBUS_SESSION_BUS_ADDRESS: unix:path=${XDG_RUNTIME_DIR}/bus
+  #     DISPLAY: :0
+  #     PULSE_SERVER: unix:${XDG_RUNTIME_DIR}/pulse/native
+  #     PULSE_COOKIE: /home/${OVOS_USER}/.config/pulse/cookie
+  #     QML2_IMPORT_PATH: /usr/lib/qml
+  #     QT_QPA_PLATFORM: eglfs
+  #     QT_QPA_EGLFS_KMS_ATOMIC: 1
+  #     QT_QPA_PLATFORMTHEME: qt5ct
+  #     QT_PLUGIN_PATH: /usr/lib/qt/plugins:/usr/lib/plugins:/usr/lib/plugins/kf5
+  #     QT_LOGGING_RULES: "*=false"
+  #     QT_FILE_SELECTORS: ovos
+  #     QT_FONT_DPI: 120
+  #     QT_IM_MODULE: qtvirtualkeyboard
+  #     QT_QUICK_CONTROLS_STYLE: OpenVoiceStyle
+  #     TZ: $TZ
+  #     XDG_CURRENT_DESKTOP: kde
+  #     XDG_RUNTIME_DIR: $XDG_RUNTIME_DIR
+  #   network_mode: host
+  #   devices:
+  #     - /dev/dri
+  #     - /dev/snd
+  #   volumes:
+  #     - ~/.config/pulse/cookie:/home/${OVOS_USER}/.config/pulse/cookie:ro
+  #     - ${OVOS_CONFIG_FOLDER}:/home/${OVOS_USER}/.config/mycroft:ro
+  #     - ${TMP_FOLDER}:/tmp/mycroft
+  #     - ${XDG_RUNTIME_DIR}:${XDG_RUNTIME_DIR}:ro
+  #     - ${XDG_RUNTIME_DIR}/bus:${XDG_RUNTIME_DIR}/bus:ro
+  #     - ${XDG_RUNTIME_DIR}/pipewire-0:${XDG_RUNTIME_DIR}/pipewire-0:ro
+  #     - ${XDG_RUNTIME_DIR}/pulse:${XDG_RUNTIME_DIR}/pulse:ro
+  #     - ${OVOS_SHARE_FOLDER}:/home/${OVOS_USER}/.local/share/mycroft
+  # depends_on:
+  #   ovos_messagebus:
+  #     condition: service_started
+  #   ovos_gui_websocket:
+  #     condition: service_started
+  #   ovos_phal:
+  #     condition: service_started
+
+  ovos_skill_homescreen:
+    <<: *podman
+    container_name: ovos_skill_homescreen
+    hostname: ovos_skill_homescreen
+    restart: unless-stopped
+    image: docker.io/smartgic/ovos-skill-homescreen:${VERSION}
+    logging: *default-logging
+    pull_policy: $PULL_POLICY
+    environment:
+      TZ: $TZ
+    network_mode: host
+    volumes:
+      - ${OVOS_CONFIG_FOLDER}:/home/${OVOS_USER}/.config/mycroft
+      - ${TMP_FOLDER}:/tmp/mycroft
+    depends_on:
+      ovos_core:
+        condition: service_started

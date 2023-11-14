@@ -1,0 +1,3 @@
+ovos-skill-stop # Latest skill version on PyPi
+ovos-skill-volume==0.0.1 # Specific skill version on PyPi
+git+https://github.com/OpenVoiceOS/skill-ovos-wikipedia.git@fix/whatever
