@@ -68,7 +68,7 @@ services:
     network_mode: host
     devices:
       - /dev/dri
-        #      - /dev/snd
+      - /dev/snd
     volumes:
       - ~/.config/pulse/cookie:/home/${OVOS_USER}/.config/pulse/cookie:ro
       - ${OVOS_CONFIG_FOLDER}:/home/${OVOS_USER}/.config/mycroft:ro
